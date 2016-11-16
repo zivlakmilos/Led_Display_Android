@@ -1,5 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <string name="app_name">Led_Display</string>
+    <string name="title_activity_main">Led Display</string>
+    <string name="action_exit">Exit</string>
+    <string name="btn_connect">Connect</string>
+    <string name="btn_disconnect">Disconnect</string>
+    <string name="btn_send">Send</string>
 
 </resources>
