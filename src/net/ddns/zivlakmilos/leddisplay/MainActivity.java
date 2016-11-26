@@ -1,23 +1,40 @@
 package net.ddns.zivlakmilos.leddisplay;
 
+import java.util.Set;
+
 import android.support.v7.app.AppCompatActivity;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
+import android.widget.Spinner;
 
 public class MainActivity extends AppCompatActivity {
 	
-	public static int FadeAnimationDuration = 500;
+	public static int FadeAnimationDuration 	= 500;
+	public static int BT_ENABLE_REQUESTS		= 1;
 	
 	private LinearLayout m_layoutConnection;
 	private LinearLayout m_layoutCommunication;
-
+	
+	private BluetoothAdapter m_btAdapter;
+	private BroadcastReceiver m_btReciver;
+	
+	private boolean m_btEnable;
+	private ArrayAdapter<String> m_btDevices;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -30,6 +47,10 @@ public class MainActivity extends AppCompatActivity {
 		
 		m_layoutCommunication.setVisibility(View.GONE);
 		
+		m_btDevices = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item);
+		Spinner spinnerBluetooth = (Spinner)findViewById(R.id.spinnerBluetooth);
+		spinnerBluetooth.setAdapter(m_btDevices);
+		
 		Button btnConnect = (Button)findViewById(R.id.btnConnect);
 		btnConnect.setOnClickListener(new OnClickListener() {
 			
@@ -38,6 +59,26 @@ public class MainActivity extends AppCompatActivity {
 				showCommunication();
 			}
 		});
+		
+		m_btReciver = new BroadcastReceiver() {
+
+			@Override
+			public void onReceive(Context context, Intent intent) {
+				if(BluetoothDevice.ACTION_FOUND.equals(intent.getAction())) {
+					BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+					m_btDevices.add(device.getName());
+				}
+			}
+			
+		};
+		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
+		registerReceiver(m_btReciver, filter);
+		
+		m_btEnable = setupBluetooth();
+	}
+	
+	@Override
+	protected void onDestroy() {
 	}
 
 	@Override
@@ -54,9 +95,42 @@ public class MainActivity extends AppCompatActivity {
 		// as you specify a parent activity in AndroidManifest.xml.
 		int id = item.getItemId();
 		if (id == R.id.action_exit) {
+			System.exit(0);
 			return true;
 		}
 		return super.onOptionsItemSelected(item);
+	}
+	
+	@Override
+	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+		if(requestCode == BT_ENABLE_REQUESTS) {
+			if(resultCode == RESULT_OK) {
+				m_btEnable = setupBluetooth();
+			} else {
+				System.exit(0);
+			}
+		}
+	}
+	
+	private boolean setupBluetooth() {
+		m_btAdapter = BluetoothAdapter.getDefaultAdapter();
+		if(m_btAdapter == null)
+			return false;
+		
+		if(!m_btAdapter.isEnabled()) {
+			Intent btEnableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
+			startActivityForResult(btEnableIntent, BT_ENABLE_REQUESTS);
+			return false;
+		}
+		
+		Set<BluetoothDevice> pairedDevices = m_btAdapter.getBondedDevices();
+		if(pairedDevices.size() > 0) {
+			for(BluetoothDevice device : pairedDevices) {
+				m_btDevices.add(device.getName());
+			}
+		}
+		
+		return m_btAdapter.startDiscovery();
 	}
 	
 	private void showConnection() {
@@ -81,4 +155,5 @@ public class MainActivity extends AppCompatActivity {
 							}
 						});
 	}
+	
 }
