@@ -1,5 +1,7 @@
 package net.ddns.zivlakmilos.leddisplay;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.Set;
 
 import android.support.v7.app.AppCompatActivity;
@@ -20,20 +22,24 @@ import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 	
-	public static int FadeAnimationDuration 	= 500;
-	public static int BT_ENABLE_REQUESTS		= 1;
+	public static final int FadeAnimationDuration 	= 500;
+	public static final int BT_ENABLE_REQUESTS		= 1;
 	
 	private LinearLayout m_layoutConnection;
 	private LinearLayout m_layoutCommunication;
+	private Spinner m_spinnerBluetooth;
 	
 	private BluetoothAdapter m_btAdapter;
 	private BroadcastReceiver m_btReciver;
+	private BluetoothNetwork m_btNetwork = null;
 	
 	private boolean m_btEnable;
-	private ArrayAdapter<String> m_btDevices;
+	private ArrayAdapter<String> m_btDeviceNames;
+	private HashMap<String, String> m_btDeviceAdresses;
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -47,16 +53,61 @@ public class MainActivity extends AppCompatActivity {
 		
 		m_layoutCommunication.setVisibility(View.GONE);
 		
-		m_btDevices = new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item);
-		Spinner spinnerBluetooth = (Spinner)findViewById(R.id.spinnerBluetooth);
-		spinnerBluetooth.setAdapter(m_btDevices);
+		m_btDeviceNames = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_dropdown_item);
+		m_btDeviceAdresses = new HashMap<String, String>();
+		
+		m_spinnerBluetooth = (Spinner)findViewById(R.id.spinnerBluetooth);
+		m_spinnerBluetooth.setAdapter(m_btDeviceNames);
 		
 		Button btnConnect = (Button)findViewById(R.id.btnConnect);
 		btnConnect.setOnClickListener(new OnClickListener() {
 			
 			@Override
 			public void onClick(View sender) {
-				showCommunication();
+				if(m_btNetwork != null)
+					return;
+				
+				try {
+					int id = m_spinnerBluetooth.getSelectedItemPosition();
+					String deviceName = m_btDeviceNames.getItem(id);
+					String deviceAddress = m_btDeviceAdresses.get(deviceName);
+					
+					m_btAdapter.cancelDiscovery();
+					BluetoothDevice device = m_btAdapter.getRemoteDevice(deviceAddress);
+					m_btNetwork = new BluetoothNetwork(device);
+					m_btNetwork.setConnectHandler(new BluetoothNetworkConnecHandler() {
+						
+						@Override
+						public void onConnect(boolean connect) {
+							final boolean connected = connect;
+							
+							if(!connect)
+								m_btNetwork = null;
+							runOnUiThread(new Runnable() {
+								
+								@Override
+								public void run() {
+									if(connected) {
+										Toast.makeText(getApplication(),
+													   "Connection success",
+													   Toast.LENGTH_LONG).show();
+										showCommunication();
+									} else {
+										Toast.makeText(getApplication(),
+													   "Connection fails",
+													   Toast.LENGTH_LONG).show();
+									}
+								}
+							});
+						}
+					});
+					m_btNetwork.start();
+				} catch(Exception ex) {
+					Toast.makeText(getApplication(),
+								   ex.getMessage(),
+								   Toast.LENGTH_LONG).show();
+					m_btNetwork = null;
+				}
 			}
 		});
 		
@@ -66,7 +117,8 @@ public class MainActivity extends AppCompatActivity {
 			public void onReceive(Context context, Intent intent) {
 				if(BluetoothDevice.ACTION_FOUND.equals(intent.getAction())) {
 					BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
-					m_btDevices.add(device.getName());
+					m_btDeviceNames.add(device.getName());
+					m_btDeviceAdresses.put(device.getName(), device.getAddress());
 				}
 			}
 			
@@ -79,8 +131,15 @@ public class MainActivity extends AppCompatActivity {
 	
 	@Override
 	protected void onDestroy() {
+		try {
+			m_btNetwork.close();
+		} catch(Exception ex) {}
+		
+		m_btAdapter.cancelDiscovery();
+		unregisterReceiver(m_btReciver);
+		super.onDestroy();
 	}
-
+	
 	@Override
 	public boolean onCreateOptionsMenu(Menu menu) {
 		// Inflate the menu; this adds items to the action bar if it is present.
@@ -126,7 +185,8 @@ public class MainActivity extends AppCompatActivity {
 		Set<BluetoothDevice> pairedDevices = m_btAdapter.getBondedDevices();
 		if(pairedDevices.size() > 0) {
 			for(BluetoothDevice device : pairedDevices) {
-				m_btDevices.add(device.getName());
+				m_btDeviceNames.add(device.getName());
+				m_btDeviceAdresses.put(device.getName(), device.getAddress());
 			}
 		}
 		
