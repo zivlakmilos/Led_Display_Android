@@ -94,6 +94,7 @@ public class BluetoothNetwork extends Thread {
 						m_btSocket.close();
 				} catch(IOException ex) {}
 				m_btSocket = mm_btSocket;
+				m_btOutput = m_btSocket.getOutputStream();
 				m_connecting = false;
 				m_connected = true;
 				if(m_connectHandler != null) {

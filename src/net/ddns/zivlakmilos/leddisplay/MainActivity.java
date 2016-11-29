@@ -19,6 +19,7 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.LinearLayout;
 import android.widget.Spinner;
 import android.widget.Toast;
@@ -31,6 +32,7 @@ public class MainActivity extends AppCompatActivity {
 	private LinearLayout m_layoutConnection;
 	private LinearLayout m_layoutCommunication;
 	private Spinner m_spinnerBluetooth;
+	private EditText m_txtData;
 	
 	private BluetoothAdapter m_btAdapter;
 	private BroadcastReceiver m_btReciver;
@@ -83,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
 		m_spinnerBluetooth = (Spinner)findViewById(R.id.spinnerBluetooth);
 		m_spinnerBluetooth.setAdapter(m_btDeviceNames);
 		
+		m_txtData = (EditText)findViewById(R.id.txtData);
+		
 		Button btnConnect = (Button)findViewById(R.id.btnConnect);
 		btnConnect.setOnClickListener(new OnClickListener() {
 			
@@ -104,6 +108,24 @@ public class MainActivity extends AppCompatActivity {
 				
 				try {
 					m_btNetwork.connect(device);
+				} catch(Exception ex) {
+					Toast.makeText(getApplication(),
+								   ex.getMessage(),
+								   Toast.LENGTH_LONG).show();
+				}
+			}
+		});
+		
+		Button btnSend = (Button)findViewById(R.id.btnSend);
+		btnSend.setOnClickListener(new OnClickListener() {
+			
+			@Override
+			public void onClick(View arg0) {
+				try {
+					String strData = m_txtData.getText().toString();
+					strData += "  \n";
+					byte[] data = strData.getBytes();
+					m_btNetwork.send(data);
 				} catch(Exception ex) {
 					Toast.makeText(getApplication(),
 								   ex.getMessage(),
