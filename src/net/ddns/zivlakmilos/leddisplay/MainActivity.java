@@ -1,6 +1,5 @@
 package net.ddns.zivlakmilos.leddisplay;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.Set;
 
@@ -35,9 +34,8 @@ public class MainActivity extends AppCompatActivity {
 	
 	private BluetoothAdapter m_btAdapter;
 	private BroadcastReceiver m_btReciver;
-	private BluetoothNetwork m_btNetwork = null;
+	private BluetoothNetwork m_btNetwork;
 	
-	private boolean m_btEnable;
 	private ArrayAdapter<String> m_btDeviceNames;
 	private HashMap<String, String> m_btDeviceAdresses;
 	
@@ -45,6 +43,32 @@ public class MainActivity extends AppCompatActivity {
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
+		
+		m_btNetwork = new BluetoothNetwork();
+		m_btNetwork.setConnectHandler(new BluetoothNetworkConnecHandler() {
+						
+			@Override
+			public void onConnect(boolean connect) {
+				final boolean connected = connect;
+				
+				runOnUiThread(new Runnable() {
+					
+					@Override
+					public void run() {
+						if(connected) {
+							Toast.makeText(getApplication(),
+										   "Connection success",
+										   Toast.LENGTH_LONG).show();
+							showCommunication();
+						} else {
+							Toast.makeText(getApplication(),
+										   "Connection fails",
+										   Toast.LENGTH_LONG).show();
+						}
+					}
+				});
+			}
+		});
 		
 		m_layoutConnection =
 				(LinearLayout)findViewById(R.id.layoutConnection);
@@ -64,49 +88,26 @@ public class MainActivity extends AppCompatActivity {
 			
 			@Override
 			public void onClick(View sender) {
-				if(m_btNetwork != null)
-					return;
+				
+				if(m_btNetwork.isConnected()) {
+					try {
+						m_btNetwork.close();
+					} catch(Exception ex) {}
+				}
+				
+				m_btAdapter.cancelDiscovery();
+				
+				int id = m_spinnerBluetooth.getSelectedItemPosition();
+				String deviceName = m_btDeviceNames.getItem(id);
+				String deviceAddress = m_btDeviceAdresses.get(deviceName);
+				BluetoothDevice device = m_btAdapter.getRemoteDevice(deviceAddress);
 				
 				try {
-					int id = m_spinnerBluetooth.getSelectedItemPosition();
-					String deviceName = m_btDeviceNames.getItem(id);
-					String deviceAddress = m_btDeviceAdresses.get(deviceName);
-					
-					m_btAdapter.cancelDiscovery();
-					BluetoothDevice device = m_btAdapter.getRemoteDevice(deviceAddress);
-					m_btNetwork = new BluetoothNetwork(device);
-					m_btNetwork.setConnectHandler(new BluetoothNetworkConnecHandler() {
-						
-						@Override
-						public void onConnect(boolean connect) {
-							final boolean connected = connect;
-							
-							if(!connect)
-								m_btNetwork = null;
-							runOnUiThread(new Runnable() {
-								
-								@Override
-								public void run() {
-									if(connected) {
-										Toast.makeText(getApplication(),
-													   "Connection success",
-													   Toast.LENGTH_LONG).show();
-										showCommunication();
-									} else {
-										Toast.makeText(getApplication(),
-													   "Connection fails",
-													   Toast.LENGTH_LONG).show();
-									}
-								}
-							});
-						}
-					});
-					m_btNetwork.start();
+					m_btNetwork.connect(device);
 				} catch(Exception ex) {
 					Toast.makeText(getApplication(),
 								   ex.getMessage(),
 								   Toast.LENGTH_LONG).show();
-					m_btNetwork = null;
 				}
 			}
 		});
@@ -126,7 +127,7 @@ public class MainActivity extends AppCompatActivity {
 		IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_FOUND);
 		registerReceiver(m_btReciver, filter);
 		
-		m_btEnable = setupBluetooth();
+		setupBluetooth();
 	}
 	
 	@Override
@@ -164,7 +165,7 @@ public class MainActivity extends AppCompatActivity {
 	protected void onActivityResult(int requestCode, int resultCode, Intent data) {
 		if(requestCode == BT_ENABLE_REQUESTS) {
 			if(resultCode == RESULT_OK) {
-				m_btEnable = setupBluetooth();
+				setupBluetooth();
 			} else {
 				System.exit(0);
 			}
@@ -191,9 +192,6 @@ public class MainActivity extends AppCompatActivity {
 		}
 		
 		return m_btAdapter.startDiscovery();
-	}
-	
-	private void showConnection() {
 	}
 	
 	private void showCommunication() {
