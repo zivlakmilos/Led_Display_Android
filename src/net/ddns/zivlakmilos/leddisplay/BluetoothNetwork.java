@@ -9,6 +9,7 @@ import android.bluetooth.BluetoothSocket;
 
 public class BluetoothNetwork extends Thread {
 
+	// UUID of device (bluetooth module on LED display)
 	public static final UUID DEVICE_UUID = UUID.fromString("00001101-0000-1000-8000-00805F9B34FB");
 	
 	private BluetoothSocket m_btSocket;

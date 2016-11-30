@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity {
 							showCommunication();
 						} else {
 							Toast.makeText(getApplication(),
-										   "Connection fails",
+										   "Connection failed",
 										   Toast.LENGTH_LONG).show();
 						}
 					}
