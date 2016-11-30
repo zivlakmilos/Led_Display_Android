@@ -123,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onClick(View arg0) {
 				try {
 					String strData = m_txtData.getText().toString();
-					strData += "  \n";
+					strData += "     \n";
 					byte[] data = strData.getBytes();
 					m_btNetwork.send(data);
 				} catch(Exception ex) {
